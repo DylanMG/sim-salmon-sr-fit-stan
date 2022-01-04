@@ -1,0 +1,234 @@
+---
+title: "Fitting state-space spawner-recruitment models to simulated data with Stan "
+date: "1/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Background
+
+This R Markdown document illustrates how to simulate some age-structured spawner recruitment data and then fit a Bayesian state-space spawner recruitment model to it using Stan via [Rstan](https://cran.r-project.org/web/packages/rstan/vignettes/rstan.html). The state-space spawner-recruitment model used here is adapted from the model described in [Fleischman et al. 2013](https://cdnsciencepub.com/doi/full/10.1139/cjfas-2012-0112).
+
+First load required libraries and function to simulate spawner-recruitment data.
+```{r housekeeping, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(rstan)
+source("sr_function.R")
+```
+
+#### Simulate some data!
+
+Next, simulate some spawner-recruitment data assuming a Ricker type spawner recruitment relationship, and convert to dataframe and remove first 7 years with no spawner data. See `sr_function.R` for details.  
+
+```{r}
+sim_sr <- process(ny = 40,
+                  alpha = 4,
+                  beta = 0.0005,
+                  phi = 0.6,
+                  mat = c(0.2, 0.3, 0.4, 0.1),
+                  sigma.R = 0.5,
+                  U_alpha = 7,
+                  U_beta = 7)
+
+sim_data <- as.data.frame(sim_sr)[8:40,] 
+
+```
+
+The outputs of the function include spawner abundance (`S`), resulting recruitment (`R`), total returns in the year of spawning (aka brood year; `N`), and returns by age (ages 4-7; `N.age.X`). 
+
+```{r}
+head(sim_data)
+```
+
+Before we try and fit a state-space model to the data let's just fit a simple linear Ricker model to the data and see what the relationship looks like.
+
+```{r}
+lm_Ricker <- lm(log(sim_data$R/sim_data$S)~sim_data$S)
+lm_Ricker_a <- lm_Ricker$coefficients[1]
+lm_Ricker_b <- lm_Ricker$coefficients[2]
+
+S <- seq(0, 4500, length.out = 100)
+
+pred_R <- exp(lm_Ricker_a)*S*exp(lm_Ricker_b*S)
+sr_pred <- as.data.frame(cbind(S, pred_R))
+
+ggplot(data=sim_data,aes(x=S, y=R)) +
+  geom_point() +
+  xlim(0,NA) +
+  ylim(0,NA) +
+  geom_line(data = sr_pred, aes(x = S, y = pred_R), color="black", size = 1) +
+  theme_bw()
+
+```
+
+The estimates of alpha (`r round(exp(lm_Ricker$coefficients[1]),2)`) and beta (`r round(lm_Ricker$coefficients[2],4)`) are similar to the true values (alpha = 4, beta = 0.0005) but not identical. 
+
+
+#### Fit a state-space model
+
+Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100):
+
+```{r}
+A_obs <- as.data.frame(sim_data) %>%
+  rowwise() %>%
+  mutate(age.4=N.age.1/N,
+         age.5=N.age.2/N,
+         age.6=N.age.3/N,
+         age.7=N.age.4/N) %>%
+  select(age.4:age.7)
+
+A_obs <- round(as.matrix(A_obs)*100)
+```
+
+Next we need to generate data frames of spawner and harvest observations, in this case by assuming a CV of 20% for spawners and 5% for harvest:
+
+```{r}
+S_obs <- rnorm(length(sim_data$S),
+               sim_data$S,
+               0.2)
+
+H_obs <- rnorm(length(sim_data$S),
+               (sim_data$N-sim_data$S),
+               0.05)
+```
+
+And then specify a list of the data to be read when fitting the model: 
+
+```{r}
+a_min <- 4 # youngest age at maturity
+a_max <- 7 # oldest age at maturity
+nyrs <- length(S_obs) # number of spawning years
+A <- a_max - a_min + 1 # total age classes
+nRyrs <- nyrs + A - 1 # number of recruitment years
+
+
+stan.data <- list("nyrs" = nyrs,
+                  "a_min" = a_min,
+                  "a_max" = a_max,
+                  "A" = A,
+                  "nRyrs" = nyrs + A - 1,
+                  "A_obs" = A_obs,
+                  "S_obs" = S_obs,
+                  "H_obs" = H_obs,
+                  "S_cv" = rep(0.2,length(S_obs)),
+                  "H_cv" = rep(0.05,length(H_obs)))
+```
+
+The actual model is written out as a Stan program (see `SS-SR_AR1.stan`) which is then called when fitting the model using the `stan()` function like so:
+
+```{r}
+stan.fit <- stan(file = "SS-SR_AR1.stan",
+                 model_name = "SS-SR_AR1",
+                 data = stan.data,
+                 chains = 2,
+                 iter = 500,
+                 seed = 42,
+                 thin = 1,
+                 control = list(adapt_delta = 0.99, max_treedepth = 20))
+```
+
+For brevity I have only run two chains for 500 iterations. You will get some warnings that are all worth looking into, but we will ignore for now.
+
+Shinystan is a great tool for interactive model examination and can be called by commenting this code snipit:
+
+```{r}
+#shinystan::launch_shinystan(stan.fit) 
+```
+
+Save the fitted model and data objects:
+
+```{r}
+saveRDS(stan.fit, file="./output/SS-SR_AR1.stan.fit.rds")
+saveRDS(stan.data, file="./output/SS-SR_AR1.stan.data.rds")
+```
+
+Or read in the objects if working from a previously save set, and extract posteriors:
+
+```{r}
+stan.fit <- readRDS("output/SS-SR_AR1.stan.fit.rds")
+stan.data <- readRDS("output/SS-SR_AR1.stan.data.rds")
+model_pars <- rstan::extract(stan.fit)
+```
+
+#### Inference! 
+
+So we have now fitted our state-space model. Lets see how well the posterior samples recover the true underlying parameters we used to simulate the data (red vertical lines):
+
+```{r, message = FALSE}
+post_df <- data.frame(
+  parameter = factor(rep(c("lnalpha", "beta", "phi"), each=dim(model_pars$lnalpha))),
+  posterior = c(model_pars$lnalpha, model_pars$beta, model_pars$phi)
+  )
+
+true_para_df <- data.frame(
+  parameter = factor(c( "beta", "lnalpha", "phi")),
+  value = c(0.0005, log(4), 0.6)
+  )
+
+ggplot(post_df, aes(x = posterior)) + 
+  geom_histogram() +
+  facet_wrap(~ parameter, scales="free") +
+  geom_vline(data = true_para_df, aes(xintercept=value), color = "red") +
+  theme_bw()
+```
+
+And what does the inferred spawner-recruitment relationship look like?. First we need to generate a data frame of spawner abundance and predicted recruitment (with uncertainty) based on the posterior samples:
+
+```{r}
+sr_years <- 33
+max_samples <- dim(model_pars$lnalpha)
+
+spwn <- exp(model_pars$lnS)
+spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(sr_years-4)]
+
+rec <-exp(model_pars$lnR)
+rec.quant <- apply(rec, 2, quantile, probs=c(0.05,0.5,0.95))[,8:dim(model_pars$R)[2]]
+
+brood_t <- as.data.frame(cbind(1:(sr_years-4),t(spwn.quant), t(rec.quant)))
+colnames(brood_t) <- c("BroodYear","S_lwr","S_med","S_upr","R_lwr","R_med","R_upr")
+
+brood_t <- as.data.frame(brood_t)
+
+# SR relationship
+spw <- seq(0,max(brood_t[,4]),length.out=100)
+SR_pred <- matrix(NA,100,max_samples)
+
+for(i in 1:max_samples){
+  r <- sample(seq(1,max_samples),1,replace=T)
+  a <- model_pars$lnalpha[r]
+  b <- model_pars$beta[r]
+  SR_pred[,i] <- (exp(a)*spw*exp(-b*spw))
+}
+
+SR_pred <- cbind(spw,t(apply(SR_pred,c(1),quantile,probs=c(0.05,0.5,0.95),na.rm=T)))
+colnames(SR_pred) <- c("Spawn", "Rec_lwr","Rec_med","Rec_upr")
+SR_pred <- as.data.frame(SR_pred)
+```
+
+And then plot out relationship:
+
+```{r, warning = FALSE}
+ggplot() +
+  geom_ribbon(data = SR_pred, aes(x = Spawn, ymin = Rec_lwr, ymax = Rec_upr),
+              fill = "grey80", alpha=0.5, linetype=2, colour="gray46") +
+  geom_line(data = SR_pred, aes(x = Spawn, y = Rec_med), color="black", size = 1) +
+  geom_errorbar(data = brood_t, aes(x= S_med, y = R_med, ymin = R_lwr, ymax = R_upr),
+                colour="grey", width=0, size=0.3) +
+  geom_errorbarh(data = brood_t, aes(x= S_med, y = R_med, xmin = S_lwr, xmax = S_upr),
+                 height=0, colour = "grey", height = 0, size = 0.3) +
+  geom_point(data = brood_t, aes(x = S_med, y = R_med, color=BroodYear, width = 0.9), size = 3)+
+  coord_cartesian(xlim=c(0, max(brood_t[,4])), ylim=c(0,max(brood_t[,7]))) +
+  scale_colour_viridis_c()+
+  xlab("Spawners") +
+  ylab("Recruits") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.key.size = unit(0.4, "cm"),
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=8))+
+  geom_abline(intercept = 0, slope = 1,col="dark grey")
+```
