@@ -1,3 +1,3 @@
-# Model Res Doc
+# fitting state-space spawner-recruitment models to simulated data with Stan
 
-Repository for cleaned model code, analysis scripts, and csasdown report
+To create html summary knit the .Rmd file
