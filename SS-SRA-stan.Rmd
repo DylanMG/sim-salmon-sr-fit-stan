@@ -1,5 +1,5 @@
 ---
-title: "Fitting state-space spawner-recruitment models to simulated data with Stan "
+title: "Fitting state-space spawner-recruitment models to simulated data with Stan"
 date: "1/4/2022"
 output: html_document
 ---
