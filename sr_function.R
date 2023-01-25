@@ -10,7 +10,6 @@
 # U_alpha <- alpha parameter for beta distribution for annual harvest rate (see https://keisan.casio.com/exec/system/1180573226)
 # U_beta <- beta parameter for beta distribution for annual harvest rate
 
-
 process = function(ny, phi, mat, alpha, beta, sigma.R, U_alpha, U_beta){
   ns = length(alpha) # number of stocks
   epi = rnorm(ny, sd = sigma.R) # recruitment deviations

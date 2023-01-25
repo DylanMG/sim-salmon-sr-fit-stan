@@ -73,7 +73,7 @@ Before fitting the model we need to wrangle the simulated data into an appropria
 
 ```{r}
 A_obs <- as.data.frame(sim_data) %>%
-  rowwise() %>%
+  rowwise() %>% ##redundant - see below
   mutate(age.4=N.age.1/N,
          age.5=N.age.2/N,
          age.6=N.age.3/N,
@@ -81,9 +81,20 @@ A_obs <- as.data.frame(sim_data) %>%
   select(age.4:age.7)
 
 A_obs <- round(as.matrix(A_obs)*100)
+
+##demonstrate rowwise is redundant - it's built into dplyr syntax already 
+A_obs2 <- as.data.frame(sim_data) %>%
+  mutate(age.4=N.age.1/N,
+         age.5=N.age.2/N,
+         age.6=N.age.3/N,
+         age.7=N.age.4/N) %>%
+  select(age.4:age.7)
+
+A_obs2 <- round(as.matrix(A_obs2)*100)
+rm(A_obs2) ##remove the example
 ```
 
-Next we need to generate data frames of spawner and harvest observations, in this case by assuming a CV of 20% for spawners and 5% for harvest:
+Next we need to generate data frames of spawner and harvest observations, in this case by assuming a CV (DG notes this is a SD not a CV!) of 20% for spawners and 5% for harvest:
 
 ```{r}
 S_obs <- rnorm(length(sim_data$S),
@@ -120,6 +131,8 @@ stan.data <- list("nyrs" = nyrs,
 The actual model is written out as a Stan program (see `SS-SR_AR1.stan`) which is then called when fitting the model using the `stan()` function like so:
 
 ```{r}
+then <- Sys.time() #to benchmark
+
 stan.fit <- stan(file = "SS-SR_AR1.stan",
                  model_name = "SS-SR_AR1",
                  data = stan.data,
@@ -127,7 +140,13 @@ stan.fit <- stan(file = "SS-SR_AR1.stan",
                  iter = 500,
                  seed = 42,
                  thin = 1,
-                 control = list(adapt_delta = 0.99, max_treedepth = 20))
+                 control = list(adapt_delta = 0.99, max_treedepth = 20), 
+                 cores = 8)
+
+now <- Sys.time()
+
+run_time <- difftime(now, then)
+run_time
 ```
 
 For brevity I have only run two chains for 500 iterations. You will get some warnings that are all worth looking into, but we will ignore for now.
