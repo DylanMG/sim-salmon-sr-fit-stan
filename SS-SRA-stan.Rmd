@@ -69,7 +69,7 @@ The estimates of alpha (`r round(exp(lm_Ricker$coefficients[1]),2)`) and beta (`
 
 #### Fit a state-space model
 
-Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100):
+Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100 *each year*, which wouldn't be the case if a field program collected different amounts of age data each year):
 
 ```{r}
 A_obs <- as.data.frame(sim_data) %>%
@@ -219,7 +219,7 @@ ggplot() +
   geom_errorbarh(data = brood_t, aes(x= S_med, y = R_med, xmin = S_lwr, xmax = S_upr),
                  height=0, colour = "grey", height = 0, size = 0.3) +
   geom_point(data = brood_t, aes(x = S_med, y = R_med, color=BroodYear, width = 0.9), size = 3)+
-  coord_cartesian(xlim=c(0, max(brood_t[,4])), ylim=c(0,max(brood_t[,7]))) +
+  coord_cartesian(xlim=c(0, max(brood_t[,4])), ylim=c(0,max(brood_t[,7])), expand = FALSE) +
   scale_colour_viridis_c()+
   xlab("Spawners") +
   ylab("Recruits") +
