@@ -121,7 +121,7 @@ model{
   for (y in 1:nRyrs) {
     for (a in 1:A) {
       //g[y,a] ~ gamma(Dir_alpha[a],1);
-      target += gamma_lpdf(g[y,a]|Dir_alpha[a],1);
+      target += gamma_lpdf(g[y,a]|Dir_alpha[a], 1);
     }
   }
 
