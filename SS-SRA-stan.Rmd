@@ -6,6 +6,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+##dylan code questions/comments are in chunks preceeded by '##'
 ```
 
 #### Background
@@ -72,20 +74,20 @@ The estimates of alpha (`r round(exp(lm_Ricker$coefficients[1]),2)`) and beta (`
 Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100 *each year*, which wouldn't be the case if a field program collected different amounts of age data each year):
 
 ```{r}
-A_obs <- as.data.frame(sim_data) %>%
+A_obs <- as.data.frame(sim_data) %>% ##converting to proportions
   mutate(age.4=N.age.1/N,
          age.5=N.age.2/N,
          age.6=N.age.3/N,
          age.7=N.age.4/N) %>%
   select(age.4:age.7)
 
-A_obs <- round(as.matrix(A_obs)*100)
+A_obs <- round(as.matrix(A_obs)*100) ##then mult by 100. why? to keep all the same among yrs?
 ```
 
 Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest:
 
 ```{r}
-S_obs <- rnorm(length(sim_data$S),
+S_obs <- rnorm(length(sim_data$S), ## is this just adding some noise to the simulated data? not sure that the SD is being treated right here, shouldn't it be sim_data_S*0.2 to convert from cv to sd?
                sim_data$S,
                0.2)
 
@@ -101,7 +103,7 @@ a_min <- 4 # youngest age at maturity
 a_max <- 7 # oldest age at maturity
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
-nRyrs <- nyrs + A - 1 # number of recruitment years
+nRyrs <- nyrs + A - 1 # number of recruitment years ## i.e. add in unobserved age classes at start to predict 1st year of spawners
 
 
 stan.data <- list("nyrs" = nyrs,
