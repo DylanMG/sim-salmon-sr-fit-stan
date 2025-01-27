@@ -106,14 +106,16 @@ a_min <- 4 # youngest age at maturity
 a_max <- 7 # oldest age at maturity
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
-nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
+#nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
+nRyrs <- nyrs + a_max + 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
 
 
 stan.data <- list("nyrs" = nyrs,
                   "a_min" = a_min,
                   "a_max" = a_max,
                   "A" = A,
-                  "nRyrs" = nyrs + A - 1, ## see above
+                  "a_i" = a_min:a_max, 
+                  "nRyrs" = nRyrs, ## see above
                   "A_obs" = A_obs,
                   "S_obs" = S_obs,
                   "H_obs" = H_obs,
@@ -124,7 +126,7 @@ stan.data <- list("nyrs" = nyrs,
 The actual model is written out as a Stan program (see `SS-SR_AR1.stan`) which is then called when fitting the model using the `stan()` function like so:
 
 ```{r}
-stan.fit <- stan(file = "SS-SR_AR1.stan",
+stan.fit <- stan(file = "SS-SR_AR1_v2.stan",
                  model_name = "SS-SR_AR1",
                  data = stan.data,
                  chains = 2,
