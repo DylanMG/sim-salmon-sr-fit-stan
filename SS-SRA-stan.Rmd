@@ -7,7 +7,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-##dylan code questions/comments are in chunks preceeded by '##'
+##dylan code questions/comments are in chunks starting with '##'
 ```
 
 #### Background
@@ -23,9 +23,10 @@ source("sr_function.R")
 
 #### Simulate some data!
 
-Next, simulate some spawner-recruitment data assuming a Ricker type spawner recruitment relationship, and convert to dataframe and remove first 7 years with no spawner data. See `sr_function.R` for details.  
+Next, simulate some spawner-recruitment data assuming a Ricker type spawner recruitment relationship, and convert to dataframe and *remove first 7 years with no spawner data*. See `sr_function.R` for details.  
 
 ```{r}
+##change italicized phrasing above to be more clear. These are years of spawner data that don't have a link to recruits?, looking at the dataframe before trimming it, how can you have 1:7 years with R but no S?
 sim_sr <- process(ny = 40,
                   alpha = 4,
                   beta = 0.0005,
@@ -43,7 +44,7 @@ The outputs of the function include spawner abundance (`S`), resulting recruitme
 
 
 ```{r}
-##these returns by age 1-4 are CALENDAR YEAR? but N is referenced by brood year?
+##assuming these returns by age 3-7 (i.e., 1-4) are CALENDAR YEAR?
 head(sim_data)
 ```
 
@@ -76,21 +77,20 @@ The estimates of alpha (`r round(exp(lm_Ricker$coefficients[1]),2)`) and beta (`
 Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100 *each year*, which wouldn't be the case if a field program collected different amounts of age data each year):
 
 ```{r}
-## ASSUMING this is based on calendar year from a sampling perspective. 
-A_obs <- as.data.frame(sim_data) %>% ##converting to proportions
+A_obs <- as.data.frame(sim_data) %>% #converting to proportions
   mutate(age.4=N.age.1/N,
          age.5=N.age.2/N,
          age.6=N.age.3/N,
          age.7=N.age.4/N) %>%
   select(age.4:age.7)
 
-A_obs <- round(as.matrix(A_obs)*100) ##then mult by 100. to scale for sample size 
+A_obs <- round(as.matrix(A_obs)*100) #then mult by 100 to scale for sample size 
 ```
 
-Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest:
+Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest; this extra noise is the observaiton error:
 
 ```{r}
-S_obs <- rnorm(length(sim_data$S), ## is this just adding some noise to the simulated data? not sure that the SD is being treated right here, shouldn't it be sim_data_S*0.2 to convert from cv to sd?
+S_obs <- rnorm(length(sim_data$S), 
                sim_data$S,
                0.2)
 
@@ -106,14 +106,14 @@ a_min <- 4 # youngest age at maturity
 a_max <- 7 # oldest age at maturity
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
-nRyrs <- nyrs + A - 1 # number of recruitment years ## WHYYYY? are the xtra years at start or end. End?
+nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
 
 
 stan.data <- list("nyrs" = nyrs,
                   "a_min" = a_min,
                   "a_max" = a_max,
                   "A" = A,
-                  "nRyrs" = nyrs + A - 1,
+                  "nRyrs" = nyrs + A - 1, ## see above
                   "A_obs" = A_obs,
                   "S_obs" = S_obs,
                   "H_obs" = H_obs,
@@ -182,16 +182,15 @@ ggplot(post_df, aes(x = posterior)) +
 And what does the inferred spawner-recruitment relationship look like?. First we need to generate a data frame of spawner abundance and predicted recruitment (with uncertainty) based on the posterior samples:
 
 ```{r}
-sr_years <- 33
 max_samples <- dim(model_pars$lnalpha)
 
 spwn <- exp(model_pars$lnS)
-spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(sr_years-4)] ##MAKE ROBUST AND UNDERSTAND WHY
+spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(nyrs-A)] ##WHY A?, why trim off end?
 
 rec <-exp(model_pars$lnR)
-rec.quant <- apply(rec, 2, quantile, probs=c(0.05,0.5,0.95))[,8:dim(model_pars$R)[2]]
+rec.quant <- apply(rec, 2, quantile, probs=c(0.05,0.5,0.95))[,(a_max+1):dim(model_pars$R)[2]] #fully observed R
 
-brood_t <- as.data.frame(cbind(1:(sr_years-4),t(spwn.quant), t(rec.quant)))
+brood_t <- as.data.frame(cbind(1:(nyrs-A),t(spwn.quant), t(rec.quant)))
 colnames(brood_t) <- c("BroodYear","S_lwr","S_med","S_upr","R_lwr","R_med","R_upr")
 
 brood_t <- as.data.frame(brood_t)
