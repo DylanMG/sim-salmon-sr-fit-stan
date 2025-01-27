@@ -41,7 +41,9 @@ sim_data <- as.data.frame(sim_sr)[8:40,]
 
 The outputs of the function include spawner abundance (`S`), resulting recruitment (`R`), total returns in the year of spawning (aka brood year; `N`), and returns by age (ages 4-7; `N.age.X`). 
 
+
 ```{r}
+##these returns by age 1-4 are CALENDAR YEAR? but N is referenced by brood year?
 head(sim_data)
 ```
 
@@ -74,6 +76,7 @@ The estimates of alpha (`r round(exp(lm_Ricker$coefficients[1]),2)`) and beta (`
 Before fitting the model we need to wrangle the simulated data into an appropriate format. First we need to generate a data frame of observed age composition over time, and specify it as integers with the sum of the rows equal to the effective sample size for each year (for simplicity assumed to equal 100 *each year*, which wouldn't be the case if a field program collected different amounts of age data each year):
 
 ```{r}
+## ASSUMING this is based on calendar year from a sampling perspective. 
 A_obs <- as.data.frame(sim_data) %>% ##converting to proportions
   mutate(age.4=N.age.1/N,
          age.5=N.age.2/N,
@@ -81,7 +84,7 @@ A_obs <- as.data.frame(sim_data) %>% ##converting to proportions
          age.7=N.age.4/N) %>%
   select(age.4:age.7)
 
-A_obs <- round(as.matrix(A_obs)*100) ##then mult by 100. why? to keep all the same among yrs?
+A_obs <- round(as.matrix(A_obs)*100) ##then mult by 100. to scale for sample size 
 ```
 
 Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest:
@@ -103,7 +106,7 @@ a_min <- 4 # youngest age at maturity
 a_max <- 7 # oldest age at maturity
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
-nRyrs <- nyrs + A - 1 # number of recruitment years ## i.e. add in unobserved age classes at start to predict 1st year of spawners
+nRyrs <- nyrs + A - 1 # number of recruitment years ## WHYYYY? are the xtra years at start or end. End?
 
 
 stan.data <- list("nyrs" = nyrs,
@@ -183,7 +186,7 @@ sr_years <- 33
 max_samples <- dim(model_pars$lnalpha)
 
 spwn <- exp(model_pars$lnS)
-spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(sr_years-4)]
+spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(sr_years-4)] ##MAKE ROBUST AND UNDERSTAND WHY
 
 rec <-exp(model_pars$lnR)
 rec.quant <- apply(rec, 2, quantile, probs=c(0.05,0.5,0.95))[,8:dim(model_pars$R)[2]]
