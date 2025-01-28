@@ -5,7 +5,7 @@ data{
   int a_min;          // minimum age class
   int a_max;          // maximum age class
   int A;              // number of age classes
-  int a_i[A];		  // age class index (3,...,7)
+  int a_i[A];		      // age class index (3,...,7)
   int nRyrs;          // number of recruitment years
   int A_obs[nyrs, A]; // observed age composition in counts by age class
   vector[nyrs] S_obs; // observed spawners
@@ -63,7 +63,7 @@ transformed parameters{
   R = exp(lnR);
 
   // Calculate the numbers at age matrix as brood year recruits at age (proportion that matured that year)
-  for (t in 1:nyrs) {
+  for (t in (a_min+A):nRyrs) {
     for(a in 1:A){
       N_ta[t,a] = R[t-a_i[a]] * p[t-a_i[a],a];
     }
@@ -93,7 +93,7 @@ transformed parameters{
   }
 
   for (y in (A+a_min):nRyrs) {
-    lnRm_1[y] = lnS[y-a_max] + lnalpha - beta * S[y-a_max];
+    lnRm_1[y] = lnS[y] + lnalpha - beta * S[y];
     lnresid[y] = lnR[y] - lnRm_1[y];
   }
 

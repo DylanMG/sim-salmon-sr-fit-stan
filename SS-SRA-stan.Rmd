@@ -87,9 +87,10 @@ A_obs <- as.data.frame(sim_data) %>% #converting to proportions
 A_obs <- round(as.matrix(A_obs)*100) #then mult by 100 to scale for sample size 
 ```
 
-Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest; this extra noise is the observaiton error:
+Next we need to generate data frames of spawner and harvest observations, in this case by assuming a SD of 20% for spawners and 5% for harvest; this extra noise is the observation error:
 
 ```{r}
+##this isn't really necessary? it's just jittering the data a bit more, the model still adds error to the obs
 S_obs <- rnorm(length(sim_data$S), 
                sim_data$S,
                0.2)
@@ -107,7 +108,7 @@ a_max <- 7 # oldest age at maturity
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
 #nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
-nRyrs <- nyrs + a_max + 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
+nRyrs <- nyrs + a_max + 1 # other option
 
 
 stan.data <- list("nyrs" = nyrs,
