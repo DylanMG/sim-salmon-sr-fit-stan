@@ -103,12 +103,12 @@ H_obs <- rnorm(length(sim_data$S),
 And then specify a list of the data to be read when fitting the model: 
 
 ```{r}
-a_min <- 4 # youngest age at maturity
-a_max <- 7 # oldest age at maturity
+a_min <- 4 # youngest age of fish returning
+a_max <- 7 # oldest age of fish returning
 nyrs <- length(S_obs) # number of spawning years
 A <- a_max - a_min + 1 # total age classes
-#nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
-nRyrs <- nyrs + a_max + 1 # other option
+nRyrs <- nyrs + A - 1 # number of recruitment years ## should be nyrs + A_max + 1 to get all unobserved states?
+#nRyrs <- nyrs + a_max + 1 # other option
 
 
 stan.data <- list("nyrs" = nyrs,
@@ -188,18 +188,18 @@ And what does the inferred spawner-recruitment relationship look like?. First we
 max_samples <- dim(model_pars$lnalpha)
 
 spwn <- exp(model_pars$lnS)
-spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(nyrs-A)] ##WHY A?, why trim off end?
+spwn.quant <- apply(spwn, 2, quantile, probs=c(0.05,0.5,0.95))[,1:(nyrs-a_min)]
 
 rec <-exp(model_pars$lnR)
 rec.quant <- apply(rec, 2, quantile, probs=c(0.05,0.5,0.95))[,(a_max+1):dim(model_pars$R)[2]] #fully observed R
 
-brood_t <- as.data.frame(cbind(1:(nyrs-A),t(spwn.quant), t(rec.quant)))
+brood_t <- as.data.frame(cbind(1:(nyrs-a_min),t(spwn.quant), t(rec.quant)))
 colnames(brood_t) <- c("BroodYear","S_lwr","S_med","S_upr","R_lwr","R_med","R_upr")
 
 brood_t <- as.data.frame(brood_t)
 
 # SR relationship
-spw <- seq(0,max(brood_t[,4]),length.out=100)
+spw <- seq(0,max(brood_t[,a_min]),length.out=100)
 SR_pred <- matrix(NA,100,max_samples)
 
 for(i in 1:max_samples){
