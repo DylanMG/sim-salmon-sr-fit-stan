@@ -1,0 +1,4 @@
+Whatsapp'ing with Kyle about Fleischman model difficulties, and talking about the age stuff
+
+try multinomial likliehood of numbers at age = samples*prop. at age
+where proportions at age come from dirchilet distribution
