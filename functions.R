@@ -10,7 +10,8 @@
 #U_alpha <- alpha parameter (i.e. shape) for beta distribution for annual harvest rate (see 
 #U_beta <- beta parameter ' '
 
-process = function(n_y, a_max, phi, mat, alpha, beta, sigma_R, U_alpha, U_beta){
+process = function(n_y, a_max, phi, mat, alpha, S_max, sigma_R, U_alpha, U_beta){
+  beta <- 1/S_max
   n_s <- length(alpha) #number of stocks
   eps <- rnorm(n_y, sd = sigma_R) #epsilon - recruitment deviations
   R0 <- log(alpha)/beta #unobserved, starting spawner abundances (i.e. at equilibrium)
