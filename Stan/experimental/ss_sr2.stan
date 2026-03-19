@@ -20,6 +20,7 @@ transformed data{
   Smax_p_sig_corr = sqrt(log(1+(Smax_p_sig^2)/(Smax_p^2))); //this converts sigma on the untransformed scale to a log scale
   Smax_p_corr = log(Smax_p)-0.5*(Smax_p_sig_corr)^2; //convert smax prior to per capita slope - transform to log scale with bias correction
 }
+
 parameters{
   real<lower=0> Smax;                     // Smax (to get beta)
   real ln_alpha0;            // initial productivity (on log scale)

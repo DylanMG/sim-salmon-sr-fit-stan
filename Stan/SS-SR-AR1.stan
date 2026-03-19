@@ -53,7 +53,7 @@ transformed parameters{
   pi[4] = 1 - pi[1] - pi[2] - pi[3];
   D_sum = 1/D_scale^2;
 
-  for (a in 1:n_a) {
+  for(a in 1:n_a){
     Dir_alpha[a] = D_sum * pi[a];
     for (y in 1:n_y_R) {
       p[y, a] = g[y, a]/sum(g[y, ]);
@@ -64,14 +64,14 @@ transformed parameters{
   S_max = 1/beta;
 
   // Calculate the numbers at age matrix as brood year recruits at age (proportion that matured that year)
-  for (t in 1:n_y) {
+  for(t in 1:n_y){
     for(a in 1:n_a){
       N_ta[t, a] = R[t + n_a - a] * p[t + n_a - a, a];
     }
   }
 
   // Calculate returns, spawners and catch by return year
-  for (t in 1:n_y) {
+  for(t in 1:n_y){
     N[t] = sum(N_ta[t, 1:n_a]);
     S[t] = N[t] * (1 - U[t]);
     lnS[t] = log(S[t]);
@@ -80,27 +80,27 @@ transformed parameters{
   }
 
   // Calculate age proportions by return year
-  for (t in 1:n_y) {
+  for(t in 1:n_y){
     for(a in 1:n_a){
       q[t,a] = N_ta[t, a]/N[t];
     }
   }
 
   // Ricker SR with AR1 process on log recruitment residuals for years with brood year spawners
-  for (i in 1:n_y_R) {
+  for(i in 1:n_y_R){
     lnresid[i] = 0.0;
     lnRm_1[i] = 0.0;
     lnRm_2[i] = 0.0;
   }
 
-  for (y in (n_a + a_min):n_y_R) {
+  for(y in (n_a + a_min):n_y_R){
     lnRm_1[y] = lnS[y - a_max] + lnalpha - beta * S[y - a_max];
     lnresid[y] = lnR[y] - lnRm_1[y];
   }
 
   lnRm_2[n_a + a_min] =  lnRm_1[n_a + a_min] + phi * lnresid_0;
 
-  for (y in (n_a + a_min + 1):n_y_R) {
+  for(y in (n_a + a_min + 1):n_y_R){
     lnRm_2[y] =  lnRm_1[y] + phi * lnresid[y - 1];
   }
 }
@@ -120,8 +120,8 @@ model{
 
   // Likelihoods
   // Gamma variates for each year and age class which are used to determine age at maturity proportions
-  for (y in 1:n_y_R) {
-    for (a in 1:n_a) {
+  for(y in 1:n_y_R){
+    for(a in 1:n_a){
       //g[y,a] ~ gamma(Dir_alpha[a],1);
       target += gamma_lpdf(g[y, a]|Dir_alpha[a], 1);
     }
