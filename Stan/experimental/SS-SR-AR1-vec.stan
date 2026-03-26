@@ -59,12 +59,12 @@ transformed parameters{
       p[y, a] = g[y, a]/sum(g[y, ]);
     }
   }
-
+  
   R = exp(lnR);
   lnS = log(S);
   lnC = log(C);
   S_max = 1/beta;
-
+  
   // Calculate the numbers at age matrix as brood year recruits at age (proportion that matured that year)
   for (t in 1:n_y) {
     for(a in 1:n_a){
