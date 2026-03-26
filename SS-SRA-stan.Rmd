@@ -327,29 +327,35 @@ ggplot(data = multi_sim_data, aes(x = S, y = R, color = pop)) +
 Then prep the data for the Stan model.
 
 ```{r multi pop data}
-#this is the "long way" i.e., make vectors of obs long then index them. 
-  #there could be a "wide way" where the vectors of obs become matrices 
 n_pops <- length(unique(multi_sim_data$pop))
-n_Y <- nrow(multi_sim_data) #length of observations from data (i.e. n_y*n_pops)
-ind_Y <- as.numeric(as.factor(multi_sim_data$pop))
-n_Y_R <- n_Y + (n_a - 1)*n_pops #total number of not-fully-observed recruitment (i.e. brood) yrs
-ind_Y_R <- rep(unique(ind_Y), each = n_Y_R/n_pops)
 
 stan.data.multi <- list("n_pops" = n_pops, 
-                        "n_Y" = n_Y, 
-                        "n_Y_R" = n_Y_R, 
-                        "ind_Y" = ind_Y, 
-                        "ind_Y_R" = ind_Y_R, 
+                        "n_y" = n_y,       #inherited from above
+                        "n_y_R" = n_y_R, 
                         "a_min" = a_min,
                         "a_max" = a_max,
                         "n_a" = n_a,
-                        "n_y" = n_y, #single pop n_years; needed for A_obs indexing
-                        "n_y_R" = n_y_R, #single pop n_years_Recruits for prop at age. JANKY
                         "A_obs" = A_obs,
-                        "S_obs" = multi_sim_data$S,
-                        "H_obs" = multi_sim_data$N - multi_sim_data$S,
-                        "S_CV" = rep(0.2, n_Y),
-                        "H_CV" = rep(0.05, n_Y))
+                        "S_obs" = as.matrix(cbind(sim_data$S, sim_data_2$S)), #new matrix of S obs
+                        "H_obs" = as.matrix(cbind(sim_data$N - sim_data$S, 
+                                                  sim_data_2$N - sim_data_2$S)),
+                        "S_CV" = rep(0.2, n_y),
+                        "H_CV" = rep(0.05, n_y))
 
-                  
+if(refit == TRUE | !("multi-SS-SR-AR1-stan-fit.rds" %in% list.files(here("output")))){
+  stan.fit <- stan(file = "Stan/multi-SS-SR-AR1-matrix.stan",
+                 model_name = "SS-SR-AR1",
+                 data = stan.data.multi,
+                 chains = 2,
+                 iter = 500,
+                 seed = 1,
+                 thin = 1,
+                 control = list(adapt_delta = 0.99, max_treedepth = 20))
+  saveRDS(stan.fit, file = here("output/multi-SS-SR-AR1-stan-fit.rds"))
+}else{
+  stan.fit <- readRDS(here("output/multi-SS-SR-AR1-stan-fit.rds"))
+}
+
+multi_model_pars <- rstan::extract(stan.fit)
+
 ```
