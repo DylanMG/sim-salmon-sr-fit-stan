@@ -199,13 +199,6 @@ ggplot(post_df, aes(x = posterior)) +
   theme_bw()
 ```
 
-Then we will look at the timeseries of data that we fit. 
-This is an important step to think of how the model is working, instead of just looking at the SR fit.  
-
-```{r plot fit and obs}
-# DO 
-```
-
 And what does the inferred spawner-recruitment relationship look like?. First we need to generate a data frame of spawner abundance and predicted recruitment (with uncertainty) based on the posterior samples:
 
 ```{r get SR preds}
@@ -223,7 +216,7 @@ colnames(brood_t) <- c("BroodYear","S_lwr","S_med","S_upr","R_lwr","R_med","R_up
 brood_t <- as.data.frame(brood_t)
 
 # SR relationship
-spw <- seq(0,max(brood_t[,a_min]),length.out=100)
+spw <- seq(0,max(brood_t$S_upr),length.out=100)
 SR_pred <- matrix(NA,100,max_samples)
 
 for(i in 1:max_samples){
@@ -263,9 +256,24 @@ ggplot() +
   geom_abline(intercept = 0, slope = 1,col="dark grey")
 ```
 
+Then we will look at the timeseries of data that we fit. 
+This is an important step to think of how the model is working, instead of just looking at the SR fit.  
+
+```{r plot fit and obs}
+# DO - make quantile objects of S, H, and A_obs then plot it
+```
+
 ## Time-varying productivity  
 
-**to do - need to think of how to best simulate**
+Now we need to simulate a population with true, underlying time-varying dynamics. 
+We'll `source()` some functions to simulate dynamics from the [GitHub repo](https://github.com/Pacific-salmon-assess/nonstationarity-workshop-2026/tree/main) used in the Pacific Salmon Commission's time varying parameters workshop from early 2026. 
+
+```{r tv}
+source("https://raw.githubusercontent.com/Pacific-salmon-assess/nonstationarity-workshop-2026/refs/heads/main/functions/sim_functions.R")
+
+#CAN i do this or do I need to bake into the numbers at age stuff? Feel like I could do that post-hoc
+
+```
 
 # Multiple population fits  
 
@@ -339,11 +347,11 @@ stan.data.multi <- list("n_pops" = n_pops,
                         "S_obs" = as.matrix(cbind(sim_data$S, sim_data_2$S)), #new matrix of S obs
                         "H_obs" = as.matrix(cbind(sim_data$N - sim_data$S, 
                                                   sim_data_2$N - sim_data_2$S)),
-                        "S_CV" = rep(0.2, n_y),
+                        "S_CV" = rep(0.2, n_y), #vector instead of matrix since they are the same for pops 
                         "H_CV" = rep(0.05, n_y))
 
 if(refit == TRUE | !("multi-SS-SR-AR1-stan-fit.rds" %in% list.files(here("output")))){
-  stan.fit <- stan(file = "Stan/multi-SS-SR-AR1-matrix.stan",
+  multi.stan.fit <- stan(file = "Stan/multi-SS-SR-AR1.stan",
                  model_name = "SS-SR-AR1",
                  data = stan.data.multi,
                  chains = 2,
@@ -351,11 +359,10 @@ if(refit == TRUE | !("multi-SS-SR-AR1-stan-fit.rds" %in% list.files(here("output
                  seed = 1,
                  thin = 1,
                  control = list(adapt_delta = 0.99, max_treedepth = 20))
-  saveRDS(stan.fit, file = here("output/multi-SS-SR-AR1-stan-fit.rds"))
+  saveRDS(multi.stan.fit, file = here("output/multi-SS-SR-AR1-stan-fit.rds"))
 }else{
-  stan.fit <- readRDS(here("output/multi-SS-SR-AR1-stan-fit.rds"))
+  multi.stan.fit <- readRDS(here("output/multi-SS-SR-AR1-stan-fit.rds"))
 }
 
-multi_model_pars <- rstan::extract(stan.fit)
-
+multi_model_pars <- rstan::extract(multi.stan.fit)
 ```
