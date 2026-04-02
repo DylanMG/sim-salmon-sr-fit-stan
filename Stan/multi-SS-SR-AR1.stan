@@ -89,7 +89,7 @@ transformed parameters{
   // Calculate age proportions by return year
     for(t in 1:n_y){
       for(a in 1:n_a){
-        q[t,a] = sum(N_ta[t, a, ])/sum(N[t, ]); //problem converting array and matrix into matrix??
+        q[t,a] = sum(N_ta[t, a, ])/sum(N[t, ]); //THIS is where the multi-stock dynamics get "compressed" into 1 q
         }
       }
 
