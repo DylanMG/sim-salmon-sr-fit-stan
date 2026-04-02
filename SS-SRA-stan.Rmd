@@ -54,7 +54,9 @@ U_alpha <- 7                 #alpha shape parameter for beta distribution for an
 U_beta <- 7                  #beta shape parameter ' ' 
 
 #hist(rbeta(1000, U_alpha, U_beta)) #to test hist shape parameters 
+# ADD REFIT THING HERE! Can't run new process on data AND use stored model 
 
+#if(refit = TRUE){}...
 sim_sr <- process(n_y = n_y_sim,
                   a_max = a_max,
                   alpha = alpha,                   
