@@ -12,7 +12,7 @@ editor_options:
   chunk_output_type: inline
 ---
 
-This document illustrates how to simulate some age-structured spawner recruitment data and then fit a Bayesian state-space spawner-recruitment model to it using Stan via [Rstan](https://cran.r-project.org/web/packages/rstan/vignettes/rstan.html). 
+This document illustrates how to simulate age-structured spawner recruitment data and then fit a Bayesian state-space spawner-recruitment model to it using Stan via [Rstan](https://cran.r-project.org/web/packages/rstan/vignettes/rstan.html). 
 The state-space spawner-recruitment model used here is adapted from the model described in [Fleischman et al. 2013](https://cdnsciencepub.com/doi/full/10.1139/cjfas-2012-0112).
 
 First load required libraries and function to simulate spawner-recruitment data.
